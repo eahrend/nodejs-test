@@ -3,6 +3,7 @@
 const express = require('express');
 const lr = require('./logreader');
 const jp = require('./jsonparser')
+const logger = require('./logs')
 
 // Constants
 const PORT = 8080;
@@ -10,6 +11,21 @@ const HOST = '0.0.0.0';
 
 // App
 const app = express();
+
+function rawBody(req, res, next) {
+  req.setEncoding('utf8');
+  req.rawBody = '';
+  req.on('data', function(chunk) {
+    req.rawBody += chunk;
+  });
+  req.on('end', function(){
+    next();
+  });
+}
+
+
+app.use(rawBody);
+
 app.get('/', (req, res) => {
   var jsonLog = lr.logReader()
   res.send(JSON.stringify(jsonLog))
@@ -51,8 +67,16 @@ app.get('/service_ids/:service_id/:instance_id',(req,res) => {
   res.send(JSON.stringify(instance))
 });
 
+app.get('/log',(req,res) => {
+  var logs = logger.getLogs()
+  res.send(logs)
+});
 
-
+app.post('/log',(req,res) => {
+  var logInfo = req.rawBody
+  logger.newLog(logInfo)
+  res.send("updated")
+});
 
 
 app.listen(PORT, HOST);
